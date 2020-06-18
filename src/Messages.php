@@ -18,6 +18,13 @@ class Messages
     protected $fromPrevious = [];
 
     /**
+     * Messages for current request
+     *
+     * @var string[]
+     */
+    protected $forNow = [];
+
+    /**
      * Messages for next request
      *
      * @var string[]
@@ -45,8 +52,12 @@ class Messages
      * @throws RuntimeException if the session cannot be found
      * @throws InvalidArgumentException if the store is not array-like
      */
-    public function __construct(&$storage = null)
+    public function __construct(&$storage = null, $storageKey = null)
     {
+        if (is_string($storageKey) && $storageKey) {
+            $this->storageKey = $storageKey;
+        }
+
         // Set storage
         if (is_array($storage) || $storage instanceof ArrayAccess) {
             $this->storage = &$storage;
@@ -67,20 +78,37 @@ class Messages
     }
 
     /**
-     * Add flash message
+     * Add flash message for the next request
      *
      * @param string $key The key to store the message under
      * @param mixed  $message Message to show on next request
      */
     public function addMessage($key, $message)
     {
-        //Create Array for this key
+        // Create Array for this key
         if (!isset($this->storage[$this->storageKey][$key])) {
-            $this->storage[$this->storageKey][$key] = array();
+            $this->storage[$this->storageKey][$key] = [];
         }
 
-        //Push onto the array
+        // Push onto the array
         $this->storage[$this->storageKey][$key][] = $message;
+    }
+
+    /**
+     * Add flash message for current request
+     *
+     * @param string $key The key to store the message under
+     * @param mixed  $message Message to show for the current request
+     */
+    public function addMessageNow($key, $message)
+    {
+        // Create Array for this key
+        if (!isset($this->forNow[$key])) {
+            $this->forNow[$key] = [];
+        }
+
+        // Push onto the array
+        $this->forNow[$key][] = $message;
     }
 
     /**
@@ -90,7 +118,19 @@ class Messages
      */
     public function getMessages()
     {
-        return $this->fromPrevious;
+        $messages = $this->fromPrevious;
+
+        foreach ($this->forNow as $key => $values) {
+            if (!isset($messages[$key])) {
+                $messages[$key] = [];
+            }
+
+            foreach ($values as $value) {
+                array_push($messages[$key], $value);
+            }
+        }
+
+        return $messages;
     }
 
     /**
@@ -101,7 +141,74 @@ class Messages
      */
     public function getMessage($key)
     {
-        //If the key exists then return all messages or null
-        return (isset($this->fromPrevious[$key])) ? $this->fromPrevious[$key] : null;
+        $messages = $this->getMessages();
+
+        // If the key exists then return all messages or null
+        return (isset($messages[$key])) ? $messages[$key] : null;
+    }
+
+    /**
+     * Get the first Flash message
+     *
+     * @param  string $key The key to get the message from
+     * @param  string $default Default value if key doesn't exist
+     * @return mixed Returns the message
+     */
+    public function getFirstMessage($key, $default = null)
+    {
+        $messages = self::getMessage($key);
+        if (is_array($messages) && count($messages) > 0) {
+            return $messages[0];
+        }
+
+        return $default;
+    }
+
+    /**
+     * Has Flash Message
+     *
+     * @param string $key The key to get the message from
+     * @return bool Whether the message is set or not
+     */
+    public function hasMessage($key)
+    {
+        $messages = $this->getMessages();
+        return isset($messages[$key]);
+    }
+
+    /**
+     * Clear all messages
+     *
+     * @return void
+     */
+    public function clearMessages()
+    {
+        if (isset($this->storage[$this->storageKey])) {
+            $this->storage[$this->storageKey] = [];
+        }
+
+        $this->fromPrevious = [];
+        $this->forNow = [];
+    }
+
+    /**
+     * Clear specific message
+     *
+     * @param  String $key The key to clear
+     * @return void
+     */
+    public function clearMessage($key)
+    {
+        if (isset($this->storage[$this->storageKey][$key])) {
+            unset($this->storage[$this->storageKey][$key]);
+        }
+
+        if (isset($this->fromPrevious[$key])) {
+            unset($this->fromPrevious[$key]);
+        }
+
+        if (isset($this->forNow[$key])) {
+            unset($this->forNow[$key]);
+        }
     }
 }

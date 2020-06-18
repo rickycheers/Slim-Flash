@@ -42,12 +42,21 @@ $app->get('/bar', function ($req, $res, $args) {
     // Get flash messages from previous request
     $messages = $this->flash->getMessages();
     print_r($messages);
+
+    // Get the first message from a specific key
+    $test = $this->flash->getFirstMessage('Test');
+    print_r($test);
 });
 
 $app->run();
 ```
 
 > Please note that a message could be a string, object or array. Please check what your storage can handle.
+
+### Using with Twig-View
+
+If you use [Twig-View](https://github.com/slimphp/Twig-View), then [slim-twig-flash](https://github.com/kanellov/slim-twig-flash) may be a useful integration package.
+
 
 ## Testing
 
